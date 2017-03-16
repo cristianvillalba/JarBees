@@ -21,7 +21,7 @@ public class LabelControl extends AbstractControl{
     private float visibilitytime = 0f;
     private float visibilitymaxtime = 2f;
     private float interpolatedvalue;
-    private ColorRGBA newcolor = ColorRGBA.Blue;
+    private ColorRGBA newcolor = ColorRGBA.White;
    
     @Override
     protected void controlUpdate(float tpf) {

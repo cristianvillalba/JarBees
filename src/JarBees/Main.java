@@ -83,7 +83,7 @@ public class Main extends SimpleApplication implements ActionListener{
         RegisterInput();
         
         mat_lines = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        mat_lines.setColor("Color", ColorRGBA.White);
+        mat_lines.setColor("Color", ColorRGBA.Orange);
         rootNode.attachChild(linkedlines);
     }
     
@@ -156,7 +156,7 @@ public class Main extends SimpleApplication implements ActionListener{
         Module mod1 = modulehashmap.get(n1);
         Module mod2 = modulehashmap.get(n2);
         
-        Line line = new Line(mod1.GetMainNode().getWorldTranslation().clone(), mod2.GetMainNode().getWorldTranslation().clone());
+        Line line = new Line(mod1.GetMainNode().getWorldBound().getCenter().clone(), mod2.GetMainNode().getWorldBound().getCenter().clone());
         line.setLineWidth(2);
                 
         Geometry geometry = new Geometry("line", line);
@@ -257,7 +257,7 @@ public class Main extends SimpleApplication implements ActionListener{
         BitmapText ch = new BitmapText(guiFont, false);
         ch.setSize(guiFont.getCharSet().getRenderedSize() * 0.2f);
         ch.setText(geo.getName()); // crosshairs
-        ch.setColor(ColorRGBA.Blue);
+        ch.setColor(ColorRGBA.White);
         ch.setLocalTranslation(geo.getWorldTranslation());
         ch.setQueueBucket(RenderQueue.Bucket.Transparent);
         
