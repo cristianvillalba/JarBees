@@ -6,6 +6,7 @@ package JarBees;
 
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.ViewPort;
@@ -38,9 +39,14 @@ public class ModuleControl extends AbstractControl{
         direction = dir;
         originaldirection = direction.clone();
         
+        //Add some static noise at the beginning
+        //float noise = (float)SimplexNoise.noise(originaldirection.x, originaldirection.y, originaldirection.z);
+        //originaldirection.multLocal(1.0f + noise*0.2f);
+        
+        
         float threadnumber = Float.parseFloat(th.replace("Id", ""));
         
-        thread = 0.2f * (threadnumber + 1.0f);
+        thread = (threadnumber+ 1.5f)*2.5f;
         localcolor = col;
     }
     
@@ -67,8 +73,6 @@ public class ModuleControl extends AbstractControl{
     @Override
     protected void controlUpdate(float tpf) {
 
-        
-      
         if (size > 1.0f)
         {
             size -= sizevariance;
@@ -78,19 +82,39 @@ public class ModuleControl extends AbstractControl{
             size = 1.0f;
         }
         
-        pulse -= vel * tpf;
         
-        if (pulse < 0)
-        {
-            pulse = 0f;
-        }
+        //Heart beat that I did with try/error
+        //goes from 4 to 0 with 2 pikes
+        //pulse = 4*FastMath.exp(-5*((Main.time + originaldirection.y*0.05f)% 1.5f)) + 3*FastMath.exp(-5*((Main.time-0.4f + originaldirection.y *0.05f) % 1.5f)); //heart beat
         
-        direction.set(originaldirection.mult(pulse + initialradius + thread));
+        //Heart beat that I did with try/error
+        //goes from 4 to 0 with 2 pikes
+        pulse = 0.01f*FastMath.exp(-4.5f*FastMath.cos((Main.time + originaldirection.y*0.25f)*3.0f)) 
+                + 0.01f*FastMath.exp(-4.0f*FastMath.cos((Main.time + originaldirection.y*0.25f)*3.0f -1.5f));
+
+        //add some noise with a time offset to make it move
+        float noise = (float)SimplexNoise.noise(originaldirection.x + Main.time*0.2f, originaldirection.y, originaldirection.z);
+        direction.set(originaldirection.mult(pulse + initialradius + thread + noise*2f));
         
         spatial.setLocalTranslation(direction);
         spatial.setLocalScale(size);
         
-        localcolor.a = 0.5f  + (size - 1.0f)*0.5f;
+        localcolor.a = 0.2f + (pulse/0.95f)*0.8f;
+        
+        try{
+            String geoname = ((Node)this.spatial).getChild(0).getName();
+            
+            if ((Main.time % 6f) >= 5.75f)
+            {
+                if (Main.modulelabellist.contains(geoname)){
+                    Main.modulelabellist.remove(geoname);
+                }
+            }
+        }
+        catch(Exception n){
+            
+        }
+        
     }
 
     @Override

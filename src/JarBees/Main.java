@@ -9,6 +9,7 @@ import com.jme3.input.controls.ActionListener;
 import com.jme3.input.controls.KeyTrigger;
 import com.jme3.input.controls.MouseButtonTrigger;
 import com.jme3.material.Material;
+import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Ray;
@@ -50,19 +51,29 @@ public class Main extends SimpleApplication implements ActionListener{
     private CollisionResults results = new CollisionResults();
     private Ray ray = new Ray(Vector3f.ZERO.clone(), Vector3f.UNIT_Z.clone());
     private Map<String, Module> modulehashmap = new HashMap<String, Module>();
+    
+    public static ArrayList<String> modulelabellist = new ArrayList<String>();
     private float checkprocesstime;
     private float checkprocessmaxtime = 1f;
     ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(2);
     private Future future;
     private Node linkedlines;
+    private Node modules;
+    private ColorRGBA linecolor;
     
     private int PID;
+    
+    public static float time = 0f;
     
     public static void main(String[] args) {
         Main app = new Main();
         
         if (args.length == 1){
             app.setPID(args[0]);
+            app.start();
+        }
+        else{
+            app.setPID("-1");
             app.start();
         }
     }
@@ -73,6 +84,7 @@ public class Main extends SimpleApplication implements ActionListener{
         allmodules = new ArrayList<Module>();
         flyCam.setMoveSpeed(10f);
         linkedlines = new Node();
+        modules = new Node();
         this.setPauseOnLostFocus(false);
         
         initCrossHairs();
@@ -83,8 +95,22 @@ public class Main extends SimpleApplication implements ActionListener{
         RegisterInput();
         
         mat_lines = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        mat_lines.setColor("Color", ColorRGBA.Orange);
+        linecolor = ColorRGBA.Orange.clone();
+        linecolor.a = 0.6f;
+        mat_lines.setColor("Color", linecolor);
+        mat_lines.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.AlphaAdditive);
+        mat_lines.getAdditionalRenderState().setDepthTest(false);
+        mat_lines.getAdditionalRenderState().setDepthWrite(false);
+        mat_lines.setTransparent(true);
+        
+        linkedlines.setQueueBucket(RenderQueue.Bucket.Translucent);
+        
         rootNode.attachChild(linkedlines);
+        rootNode.attachChild(modules);
+        
+        if (PID == -1){
+            GenerateTestModules();
+        }
     }
     
     public void setPID(String value)
@@ -175,7 +201,7 @@ public class Main extends SimpleApplication implements ActionListener{
         
         if (!modulehashmap.containsKey(realname))
         {
-            Module mod = new Module(assetManager, rootNode, realname, thread);
+            Module mod = new Module(assetManager, modules, realname, thread);
             allmodules.add(mod);
             modulehashmap.put(realname, mod);
         }
@@ -185,25 +211,40 @@ public class Main extends SimpleApplication implements ActionListener{
         }
     }
     
+    private void GenerateTestModules()
+    {
+        ArrayList<String> testdata = new ArrayList<String>();
+        
+        for (int i = 0 ; i < 1000; i++){
+            int randthread = FastMath.nextRandomInt(0,3);
+            testdata.add(randthread + "|DKA"+ i);
+        }
+     
+        ProcessModules(testdata);
+    }
+    
     @Override
     public void simpleUpdate(float tpf) {
 
         collideraytime += tpf;
         checkprocesstime += tpf;
+        time += tpf;
         
-        if (collideraytime > collideraymaxtime)
-        {
-            PutModuleInfo();
-            collideraytime = 0f;
-        }
-        
-        if (checkprocesstime > checkprocessmaxtime)
-        {
-            checkprocesstime = 0f;
-            
-            if (future == null)
+        if (PID != -1){
+            if (collideraytime > collideraymaxtime)
             {
-                future = executor.submit(HookProcess);    //  Thread starts!
+                PutModuleInfo();
+                collideraytime = 0f;
+            }
+
+            if (checkprocesstime > checkprocessmaxtime)
+            {
+                checkprocesstime = 0f;
+
+                if (future == null)
+                {
+                    future = executor.submit(HookProcess);    //  Thread starts!
+                }
             }
         }
         
@@ -244,7 +285,11 @@ public class Main extends SimpleApplication implements ActionListener{
           if (closest.getGeometry().getUserData("type") != null)
           {
               if (closest.getGeometry().getUserData("type").equals("module")){
-                AddLabel(closest.getGeometry());
+                  
+                  if (!modulelabellist.contains(closest.getGeometry().getName())){
+                      AddLabel(closest.getGeometry()); 
+                      modulelabellist.add(closest.getGeometry().getName());
+                  }           
               }
           }
           
@@ -255,11 +300,11 @@ public class Main extends SimpleApplication implements ActionListener{
     private void AddLabel(Geometry geo)
     {
         BitmapText ch = new BitmapText(guiFont, false);
-        ch.setSize(guiFont.getCharSet().getRenderedSize() * 0.2f);
+        ch.setSize(guiFont.getCharSet().getRenderedSize() * 0.02f);
         ch.setText(geo.getName()); // crosshairs
         ch.setColor(ColorRGBA.White);
         ch.setLocalTranslation(geo.getWorldTranslation());
-        ch.setQueueBucket(RenderQueue.Bucket.Transparent);
+        ch.setQueueBucket(RenderQueue.Bucket.Translucent);
         
         BillboardControl billcontrol = new BillboardControl();
         ch.addControl(billcontrol);
