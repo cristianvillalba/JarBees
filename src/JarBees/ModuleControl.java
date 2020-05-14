@@ -31,10 +31,10 @@ public class ModuleControl extends AbstractControl{
     private float maxsize = 2.0f;
     private float sizevariance = 0.001f;
     private float sizepulsevariance = 1.1f;
-    private float thread;
+    private float level;
     private ColorRGBA localcolor;
     
-    public ModuleControl(Vector3f dir, String th, ColorRGBA col)
+    public ModuleControl(Vector3f dir, float l, ColorRGBA col)
     {
         direction = dir;
         originaldirection = direction.clone();
@@ -42,11 +42,8 @@ public class ModuleControl extends AbstractControl{
         //Add some static noise at the beginning
         //float noise = (float)SimplexNoise.noise(originaldirection.x, originaldirection.y, originaldirection.z);
         //originaldirection.multLocal(1.0f + noise*0.2f);
-        
-        
-        float threadnumber = Float.parseFloat(th.replace("Id", ""));
-        
-        thread = (threadnumber+ 1.5f)*2.5f;
+            
+        level = (l+ 1.5f)*2.5f;
         localcolor = col;
     }
     
@@ -67,7 +64,7 @@ public class ModuleControl extends AbstractControl{
         
         float threadnumber = Float.parseFloat(th.replace("Id", ""));
         
-        thread = 0.1f * (threadnumber + 1.0f);
+        level = 0.1f * (threadnumber + 1.0f);
     }
     
     @Override
@@ -94,7 +91,7 @@ public class ModuleControl extends AbstractControl{
 
         //add some noise with a time offset to make it move
         float noise = (float)SimplexNoise.noise(originaldirection.x + Main.time*0.2f, originaldirection.y, originaldirection.z);
-        direction.set(originaldirection.mult(pulse + initialradius + thread + noise*2f));
+        direction.set(originaldirection.mult(pulse + initialradius + level + noise*2f));
         
         spatial.setLocalTranslation(direction);
         spatial.setLocalScale(size);

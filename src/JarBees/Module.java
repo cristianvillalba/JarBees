@@ -28,7 +28,7 @@ public class Module{
     private float width = 1.0f;
     private float height = 1.0f;
     
-    public Module(AssetManager asset, Node root, String name, String th)
+    public Module(AssetManager asset, Node root, String name, String th, float level)
     {
         //mat_core = new Material(asset, "Common/MatDefs/Misc/Particle.j3md");
         //mat_core.setTexture("Texture", asset.loadTexture("Textures/Smoke.png"));
@@ -64,7 +64,7 @@ public class Module{
         centernode.setUserData("touched", false);
         centernode.setQueueBucket(RenderQueue.Bucket.Transparent);
         
-        modulecontrol = new ModuleControl(normal, th, localcolor);
+        modulecontrol = new ModuleControl(normal, level, localcolor);
         centernode.addControl(modulecontrol);
         
         centernode.attachChild(quadgeo);
@@ -75,7 +75,7 @@ public class Module{
         root.attachChild(centernode);
     }
     
-    private ColorRGBA GenerateColor(String th)
+    public static ColorRGBA GenerateColor(String th)
     {
         float hue = 0.0f;
         switch(th)

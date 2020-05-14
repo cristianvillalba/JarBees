@@ -156,9 +156,23 @@ public class Main extends SimpleApplication implements ActionListener{
     {        
         linkedlines.detachAllChildren();
         
-        for (int i = 0; i < data.size(); i++)
+        //System.out.println(data);
+        //loop in reverse order due to stack trace
+        //for (int i = 0; i < data.size(); i++)
+        String thread = "none";
+        float level = 0.0f;
+        
+        for (int i = (data.size() - 1); i > 0; i--)
         {
-            InteractModule(data.get(i));
+            String idthread = data.get(i).split("\\|")[0];
+            
+            if (!idthread.equals(thread))
+            {
+                thread = idthread;
+                level = 0.0f; //reset level radius
+            }
+            InteractModule(data.get(i), level);
+            level+= 0.1f;
         }
         
         for (int i = 0; i < data.size() - 1; i++)
@@ -170,14 +184,23 @@ public class Main extends SimpleApplication implements ActionListener{
             
             if (id0.equals(id1))
             {
-                GenerateLinkedLine(name1, name2);
+                String convertedthread = "1";
+                try{
+                    convertedthread = thread.replace("Id","").replace(" ","");
+                }
+                catch(Exception n)
+                {
+
+                }
+                ColorRGBA color = Module.GenerateColor(convertedthread);
+                GenerateLinkedLine(name1, name2, color);
             }
         }
         
         
     }
     
-    private void GenerateLinkedLine(String n1, String n2)
+    private void GenerateLinkedLine(String n1, String n2, ColorRGBA color)
     {
         Module mod1 = modulehashmap.get(n1);
         Module mod2 = modulehashmap.get(n2);
@@ -186,7 +209,9 @@ public class Main extends SimpleApplication implements ActionListener{
         line.setLineWidth(2);
                 
         Geometry geometry = new Geometry("line", line);
-        geometry.setMaterial(mat_lines);
+        Material mat = mat_lines.clone();
+        mat.setColor("Color", color);
+        geometry.setMaterial(mat);
         
         LinkedLineControl linecontrol = new LinkedLineControl(mod1, mod2, line);
         
@@ -195,13 +220,22 @@ public class Main extends SimpleApplication implements ActionListener{
         linkedlines.attachChild(geometry);
     }
     
-    private void InteractModule(String name){
+    private void InteractModule(String name, float level){
         String realname = name.split("\\|")[1];
         String thread = name.split("\\|")[0];
+        String convertedthread = "1";
+        
+        try{
+            convertedthread = thread.replace("Id","").replace(" ","");
+        }
+        catch(Exception n)
+        {
+            
+        }
         
         if (!modulehashmap.containsKey(realname))
         {
-            Module mod = new Module(assetManager, modules, realname, thread);
+            Module mod = new Module(assetManager, modules, realname, convertedthread, level);
             allmodules.add(mod);
             modulehashmap.put(realname, mod);
         }
@@ -215,7 +249,7 @@ public class Main extends SimpleApplication implements ActionListener{
     {
         ArrayList<String> testdata = new ArrayList<String>();
         
-        for (int i = 0 ; i < 1000; i++){
+        for (int i = 0 ; i < 500; i++){
             int randthread = FastMath.nextRandomInt(0,3);
             testdata.add(randthread + "|DKA"+ i);
         }
@@ -230,13 +264,14 @@ public class Main extends SimpleApplication implements ActionListener{
         checkprocesstime += tpf;
         time += tpf;
         
+       
+        if (collideraytime > collideraymaxtime)
+        {
+            PutModuleInfo();
+            collideraytime = 0f;
+        }
+            
         if (PID != -1){
-            if (collideraytime > collideraymaxtime)
-            {
-                PutModuleInfo();
-                collideraytime = 0f;
-            }
-
             if (checkprocesstime > checkprocessmaxtime)
             {
                 checkprocesstime = 0f;
@@ -335,6 +370,12 @@ public class Main extends SimpleApplication implements ActionListener{
             p2 = Pattern.compile("\\s([A-Za-z0-9_-]*\\+)");
             p3 = Pattern.compile("\\s*([0-9]*\\s*)Id");
                                   
+            // -pv no invasive
+            // -p PID
+            // -c send commands to the debugger after initialization
+            //~ display thread info * all threads
+            //k is stack with b meaning 3 parameters, and first 0x80 lines
+            
             ProcessBuilder processBuilder = new ProcessBuilder("dbgruntime/cdb.exe","-p", "" + PID + "","-pv","-c","~*kb80;q");
             Process process = null;
             String line;
