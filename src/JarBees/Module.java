@@ -9,6 +9,7 @@ import com.jme3.material.Material;
 import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
+import com.jme3.math.Matrix3f;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.queue.RenderQueue;
@@ -28,7 +29,7 @@ public class Module{
     private float width = 1.0f;
     private float height = 1.0f;
     
-    public Module(AssetManager asset, Node root, String name, String th, float level)
+    public Module(AssetManager asset, Node root, String name, String th, float level, float azim, float alt)
     {
         //mat_core = new Material(asset, "Common/MatDefs/Misc/Particle.j3md");
         //mat_core.setTexture("Texture", asset.loadTexture("Textures/Smoke.png"));
@@ -54,9 +55,21 @@ public class Module{
         quadgeo.setLocalTranslation(-width/2, -height/2, 0f);
         quadgeo.setQueueBucket(RenderQueue.Bucket.Translucent);
            
-        Vector3f normal = new Vector3f();
-        normal.set(FastMath.nextRandomFloat() - 0.5f, FastMath.nextRandomFloat() - 0.5f, FastMath.nextRandomFloat() - 0.5f);
-        normal.normalizeLocal();
+        //Vector3f normal = Vector3f.UNIT_X.clone();
+        Matrix3f rot1 = new Matrix3f();
+        Matrix3f rot2 = new Matrix3f();
+        float azimuth = azim;
+        float altitude = alt;
+        
+        if (level != 0.0f){
+            azimuth += FastMath.nextRandomFloat()*0.2f - 0.1f;
+            altitude += FastMath.nextRandomFloat()*0.2f - 0.1f;
+        }
+        
+        rot1.fromAngleAxis(azimuth, Vector3f.UNIT_Y);
+        rot2.fromAngleAxis(altitude, Vector3f.UNIT_Z);
+        
+        Vector3f normal = rot1.mult(rot2).mult(Vector3f.UNIT_Y.clone());
         
         centernode = new Node();
         centernode.setName(name);

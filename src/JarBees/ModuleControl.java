@@ -26,10 +26,10 @@ public class ModuleControl extends AbstractControl{
     private float finalvel = 0f;
     private float timetoaccel = 0f;
     private float maxtimetoaccel = 0.5f;
-    private float initialradius = 5f;
+    private float initialradius = 0.5f;
     private float size = 1.0f;
-    private float maxsize = 2.0f;
-    private float sizevariance = 0.001f;
+    private float maxsize = 4.0f;
+    private float sizevariance = 0.01f;
     private float sizepulsevariance = 1.1f;
     private float level;
     private ColorRGBA localcolor;
@@ -38,10 +38,6 @@ public class ModuleControl extends AbstractControl{
     {
         direction = dir;
         originaldirection = direction.clone();
-        
-        //Add some static noise at the beginning
-        //float noise = (float)SimplexNoise.noise(originaldirection.x, originaldirection.y, originaldirection.z);
-        //originaldirection.multLocal(1.0f + noise*0.2f);
             
         level = (l+ 1.5f)*2.5f;
         localcolor = col;
@@ -49,22 +45,16 @@ public class ModuleControl extends AbstractControl{
     
     public void MakePulse(String th)
     {
-        pulse += 0.30f;
-        size *= 1.2f;
         
-        if (pulse > maxpulse)
-        {
-            pulse = maxpulse;
-        }
+        
+        size *= 1.1f;
+        
         
         if (size > maxsize)
         {
             size = maxsize;
         }
         
-        float threadnumber = Float.parseFloat(th.replace("Id", ""));
-        
-        level = 0.1f * (threadnumber + 1.0f);
     }
     
     @Override

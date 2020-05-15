@@ -158,9 +158,10 @@ public class Main extends SimpleApplication implements ActionListener{
         
         //System.out.println(data);
         //loop in reverse order due to stack trace
-        //for (int i = 0; i < data.size(); i++)
         String thread = "none";
         float level = 0.0f;
+        float azimuth = FastMath.nextRandomFloat()*FastMath.TWO_PI;
+        float altitude = FastMath.nextRandomFloat()*FastMath.PI;
         
         for (int i = (data.size() - 1); i > 0; i--)
         {
@@ -170,9 +171,12 @@ public class Main extends SimpleApplication implements ActionListener{
             {
                 thread = idthread;
                 level = 0.0f; //reset level radius
+                azimuth = FastMath.nextRandomFloat()*FastMath.TWO_PI;
+                altitude = FastMath.nextRandomFloat()*FastMath.PI;
+                
             }
-            InteractModule(data.get(i), level);
-            level+= 0.1f;
+            InteractModule(data.get(i), level, azimuth, altitude);
+            level+= 0.55f;
         }
         
         for (int i = 0; i < data.size() - 1; i++)
@@ -205,6 +209,10 @@ public class Main extends SimpleApplication implements ActionListener{
         Module mod1 = modulehashmap.get(n1);
         Module mod2 = modulehashmap.get(n2);
         
+        if (mod1 == null || mod2 == null){
+            return;
+        }
+        
         Line line = new Line(mod1.GetMainNode().getWorldBound().getCenter().clone(), mod2.GetMainNode().getWorldBound().getCenter().clone());
         line.setLineWidth(2);
                 
@@ -220,7 +228,7 @@ public class Main extends SimpleApplication implements ActionListener{
         linkedlines.attachChild(geometry);
     }
     
-    private void InteractModule(String name, float level){
+    private void InteractModule(String name, float level, float azim, float alt){
         String realname = name.split("\\|")[1];
         String thread = name.split("\\|")[0];
         String convertedthread = "1";
@@ -233,25 +241,36 @@ public class Main extends SimpleApplication implements ActionListener{
             
         }
         
-        if (!modulehashmap.containsKey(realname))
+        if (!modulehashmap.containsKey(realname)) //should I generate each module on thread or only one?
         {
-            Module mod = new Module(assetManager, modules, realname, convertedthread, level);
+            Module mod = new Module(assetManager, modules, realname, convertedthread, level, azim, alt);
             allmodules.add(mod);
             modulehashmap.put(realname, mod);
         }
         else
         {
             modulehashmap.get(realname).Pulsate(thread);
+        }/*
+        if (!modulehashmap.containsKey((realname+convertedthread)))
+        {
+            Module mod = new Module(assetManager, modules, realname, convertedthread, level, azim, alt);
+            allmodules.add(mod);
+            modulehashmap.put(realname+convertedthread, mod);
         }
+        else
+        {
+            modulehashmap.get(realname+convertedthread).Pulsate(thread);
+        }*/
     }
     
     private void GenerateTestModules()
     {
         ArrayList<String> testdata = new ArrayList<String>();
         
-        for (int i = 0 ; i < 500; i++){
-            int randthread = FastMath.nextRandomInt(0,3);
-            testdata.add(randthread + "|DKA"+ i);
+        int thread = 0;
+        for (int i = 0 ; i < 6; i++){
+            thread = (int)i / 3;
+            testdata.add(thread + "|DKA"+ i);
         }
      
         ProcessModules(testdata);
@@ -395,7 +414,7 @@ public class Main extends SimpleApplication implements ActionListener{
                     
                     while(m.find())
                     {
-                        threadid = m.group(0).toString();
+                        threadid = m.group(0).toString().replace("Id", "").replace(" ", "");
                     }
                     
                     m = p1.matcher(line);
