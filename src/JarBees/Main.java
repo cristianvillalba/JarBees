@@ -25,6 +25,13 @@ import com.jme3.scene.control.BillboardControl;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Line;
 import com.jme3.scene.shape.Quad;
+import com.simsilica.lemur.Button;
+import com.simsilica.lemur.Command;
+import com.simsilica.lemur.Container;
+import com.simsilica.lemur.GuiGlobals;
+import com.simsilica.lemur.Label;
+import com.simsilica.lemur.ListBox;
+import com.simsilica.lemur.style.BaseStyles;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -57,6 +64,7 @@ public class Main extends SimpleApplication implements ActionListener{
     private float checkprocessmaxtime = 1f;
     ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(2);
     private Future future;
+    private Future futurepidlist;
     private Node linkedlines;
     private Node modules;
     private ColorRGBA linecolor;
@@ -64,6 +72,10 @@ public class Main extends SimpleApplication implements ActionListener{
     private int PID;
     
     public static float time = 0f;
+    public static Main instance;
+    private int nextItem = 1;
+    private Container pidlistwin = null;
+    private ListBox listpid = null;
     
     public static void main(String[] args) {
         Main app = new Main();
@@ -76,6 +88,8 @@ public class Main extends SimpleApplication implements ActionListener{
             app.setPID("-1");
             app.start();
         }
+        
+        instance = app;
     }
 
     @Override
@@ -86,6 +100,15 @@ public class Main extends SimpleApplication implements ActionListener{
         linkedlines = new Node();
         modules = new Node();
         this.setPauseOnLostFocus(false);
+        
+        // Initialize the globals access so that the default
+        // components can find what they need.
+        GuiGlobals.initialize(this);
+        // Load the 'glass' style
+        BaseStyles.loadGlassStyle();
+        // Set 'glass' as the default style when not specified
+        GuiGlobals.getInstance().getStyles().setDefaultStyle("glass");
+        
         
         initCrossHairs();
         
@@ -111,6 +134,99 @@ public class Main extends SimpleApplication implements ActionListener{
         if (PID == -1){
             GenerateTestModules();
         }
+        
+        InitGUI();
+    }
+    
+    private void InitGUI(){
+        // Create a simple container for our elements
+        Container myWindow = new Container();
+        guiNode.attachChild(myWindow);
+
+        // Put it somewhere that we will see it.
+        // Note: Lemur GUI elements grow down from the upper left corner.
+        myWindow.setLocalTranslation(10, cam.getHeight()- 10, 0);
+
+        // Add some elements
+        myWindow.addChild(new Label("Process Viewer"));
+        Button clickMe = myWindow.addChild(new Button("Load PID"));
+        clickMe.addClickCommands(new Command<Button>() {
+                @Override
+                public void execute( Button source ) {
+                    //System.out.println("The world is yours.");
+                    instance.CallProcessPIDs();
+                }
+            });
+    }
+    
+    public void CallProcessPIDs()
+    {
+        futurepidlist = executor.submit(HookProcessList);
+    }
+    
+    public void ClosePIDList()
+    {
+        guiNode.detachChild(pidlistwin);
+        pidlistwin = null;
+    }
+    
+    public void ProcessPIDList(ArrayList<String> data)
+    {
+        this.PIDlist(data);
+    }
+    
+    public void PIDlist(ArrayList<String> data){
+        // Create a simple container for our elements
+        if (pidlistwin != null)
+            return;
+        
+        pidlistwin = new Container();
+        listpid = new ListBox();
+        guiNode.attachChild(pidlistwin);
+
+        // Put it somewhere that we will see it.
+        // Note: Lemur GUI elements grow down from the upper left corner.
+        pidlistwin.setLocalTranslation(110, cam.getHeight()- 10, 0);
+
+        listpid.setVisibleItems(20);
+ 
+        for( int i = 0; i < data.size(); i++ ) {        
+            listpid.getModel().add(data.get(i));
+            nextItem++;
+        }    
+        
+        // Add some elements
+        pidlistwin.addChild(new Label("PID List"));
+        pidlistwin.addChild(listpid);
+        Button clickMe = pidlistwin.addChild(new Button("Load"));
+        clickMe.addClickCommands(new Command<Button>() {
+                @Override
+                public void execute( Button source ) {
+                    instance.ClearModules();
+                    instance.SetNewPID();
+                    instance.ClosePIDList();
+                }
+            });
+    }
+    
+    public void SetNewPID()
+    {
+        Integer selection = this.listpid.getSelectionModel().getSelection();
+        
+        String selectedvalue = this.listpid.getModel().get(selection).toString();
+        System.out.println("Selected:" + selectedvalue);
+        
+        String parsedpid = selectedvalue.split("\\|")[0];
+        
+        this.setPID(parsedpid);
+    }
+    
+    public void ClearModules()
+    {
+        linkedlines.detachAllChildren();
+        modules.detachAllChildren();
+        allmodules.clear();
+        modulehashmap.clear();
     }
     
     public void setPID(String value)
@@ -268,7 +384,7 @@ public class Main extends SimpleApplication implements ActionListener{
         ArrayList<String> testdata = new ArrayList<String>();
         
         int thread = 0;
-        for (int i = 0 ; i < 6; i++){
+        for (int i = 0 ; i < 100; i++){
             thread = (int)i / 3;
             testdata.add(thread + "|DKA"+ i);
         }
@@ -318,6 +434,25 @@ public class Main extends SimpleApplication implements ActionListener{
             }
             else if(future.isCancelled()){
                 future = null;
+            }
+        }
+        
+        if (futurepidlist != null)
+        {
+            if(futurepidlist.isDone()){
+                
+                try{
+                    ProcessPIDList((ArrayList<String>)futurepidlist.get());
+                }
+                catch(Exception m)
+                {
+                    
+                }
+                
+                futurepidlist = null;
+            }
+            else if(futurepidlist.isCancelled()){
+                futurepidlist = null;
             }
         }
             
@@ -430,6 +565,52 @@ public class Main extends SimpleApplication implements ActionListener{
                     {
                         data.add(threadid + "|" + m.group(0).toString());
                     }
+
+                }
+            }
+            catch(Exception n)
+            {
+
+            }
+
+            return data;
+        }
+    };
+    
+    private Callable<ArrayList<String>> HookProcessList = new Callable<ArrayList<String>>(){
+        public ArrayList<String> call() throws Exception {
+            ArrayList<String> data = new ArrayList<String>();
+             
+            ProcessBuilder processBuilder = new ProcessBuilder("tasklist.exe");
+            Process process = null;
+            String line;
+
+            try {
+                process = processBuilder.start();
+            } catch (IOException ex) {
+            }
+
+            BufferedReader input = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+     
+            try{
+                line = null;
+                boolean read = false;
+                
+                while((line = input.readLine())!= null){
+                    if (line.contains("=")){
+                        read = true;
+                        continue;
+                    }
+                    
+                    if (read){
+                        String pidname = line.substring(0, 26);
+                        String pid = line.substring(26, 35);
+
+
+                        data.add(pid.trim() + "|" + pidname.trim());
+                    }
+                    
 
                 }
             }
