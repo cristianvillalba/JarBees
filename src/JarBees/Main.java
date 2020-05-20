@@ -75,7 +75,9 @@ public class Main extends SimpleApplication implements ActionListener{
     public static Main instance;
     private int nextItem = 1;
     private Container pidlistwin = null;
+    private Container myMainWindow = null;
     private ListBox listpid = null;
+    private boolean togglegui = true;
     
     public static void main(String[] args) {
         Main app = new Main();
@@ -139,17 +141,19 @@ public class Main extends SimpleApplication implements ActionListener{
     }
     
     private void InitGUI(){
+        flyCam.setEnabled(false);
+        
         // Create a simple container for our elements
-        Container myWindow = new Container();
-        guiNode.attachChild(myWindow);
+        myMainWindow = new Container();
+        guiNode.attachChild(myMainWindow);
 
         // Put it somewhere that we will see it.
         // Note: Lemur GUI elements grow down from the upper left corner.
-        myWindow.setLocalTranslation(10, cam.getHeight()- 10, 0);
+        myMainWindow.setLocalTranslation(10, cam.getHeight()- 10, 0);
 
         // Add some elements
-        myWindow.addChild(new Label("Process Viewer"));
-        Button clickMe = myWindow.addChild(new Button("Load PID"));
+        myMainWindow.addChild(new Label("Process Viewer"));
+        Button clickMe = myMainWindow.addChild(new Button("Load PID"));
         clickMe.addClickCommands(new Command<Button>() {
                 @Override
                 public void execute( Button source ) {
@@ -195,6 +199,8 @@ public class Main extends SimpleApplication implements ActionListener{
             nextItem++;
         }    
         
+        listpid.setPreferredSize(new Vector3f(350f,350f,1f));
+        
         // Add some elements
         pidlistwin.addChild(new Label("PID List"));
         pidlistwin.addChild(listpid);
@@ -212,6 +218,9 @@ public class Main extends SimpleApplication implements ActionListener{
     public void SetNewPID()
     {
         Integer selection = this.listpid.getSelectionModel().getSelection();
+        
+        if (selection == null)
+            return;
         
         String selectedvalue = this.listpid.getModel().get(selection).toString();
         System.out.println("Selected:" + selectedvalue);
@@ -254,9 +263,9 @@ public class Main extends SimpleApplication implements ActionListener{
     }
     
     public void RegisterInput() {
-        inputManager.addMapping("shoot",new MouseButtonTrigger(MouseInput.BUTTON_LEFT), new KeyTrigger(keyInput.KEY_RETURN));
+        inputManager.addMapping("cursor",new MouseButtonTrigger(MouseInput.BUTTON_LEFT), new KeyTrigger(keyInput.KEY_RETURN));
         
-        inputManager.addListener(this, "shoot");
+        inputManager.addListener(this, "cursor");
     }
     
     private void InitCore()
@@ -505,10 +514,20 @@ public class Main extends SimpleApplication implements ActionListener{
     }
 
     public void onAction(String name, boolean isPressed, float tpf) {
-        if (name.contains("shoot") && isPressed)
+        if (name.contains("cursor") && isPressed)
         {
-            //int rand = FastMath.nextRandomInt(0, allmodules.size() - 1);    
-            //allmodules.get(rand).Pulsate();
+            if (togglegui)
+            {
+                GuiGlobals.getInstance().setCursorEventsEnabled(false);
+                flyCam.setEnabled(true);
+                togglegui = false;
+            }
+            else
+            {
+                GuiGlobals.getInstance().setCursorEventsEnabled(true);
+                flyCam.setEnabled(false);
+                togglegui = true;
+            }
         }
     }
     
