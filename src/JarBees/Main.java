@@ -368,7 +368,7 @@ public class Main extends SimpleApplication implements ActionListener{
         
         if (!modulehashmap.containsKey(realname)) //should I generate each module on thread or only one?
         {
-            Module mod = new Module(assetManager, modules, realname, convertedthread, level, azim, alt);
+            Module mod = new Module(assetManager, modules, realname, convertedthread, level, azim, alt, false);
             allmodules.add(mod);
             modulehashmap.put(realname, mod);
         }

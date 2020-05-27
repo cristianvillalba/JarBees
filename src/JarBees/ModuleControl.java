@@ -33,14 +33,17 @@ public class ModuleControl extends AbstractControl{
     private float sizepulsevariance = 1.1f;
     private float level;
     private ColorRGBA localcolor;
+    private boolean totexture;
+    private float internaltime;
     
-    public ModuleControl(Vector3f dir, float l, ColorRGBA col)
+    public ModuleControl(Vector3f dir, float l, ColorRGBA col, boolean tt)
     {
         direction = dir;
         originaldirection = direction.clone();
             
         level = (l+ 1.5f)*2.5f;
         localcolor = col;
+        totexture = tt;
     }
     
     public void MakePulse(String th)
@@ -69,18 +72,25 @@ public class ModuleControl extends AbstractControl{
             size = 1.0f;
         }
         
-        
+        if (!totexture)
+        {
+            internaltime = Main.time;
+        }
+        else
+        {
+            internaltime = RenderToSwing.time;
+        }
         //Heart beat that I did with try/error
         //goes from 4 to 0 with 2 pikes
         //pulse = 4*FastMath.exp(-5*((Main.time + originaldirection.y*0.05f)% 1.5f)) + 3*FastMath.exp(-5*((Main.time-0.4f + originaldirection.y *0.05f) % 1.5f)); //heart beat
         
         //Heart beat that I did with try/error
         //goes from 4 to 0 with 2 pikes
-        pulse = 0.01f*FastMath.exp(-4.5f*FastMath.cos((Main.time + originaldirection.y*0.25f)*3.0f)) 
-                + 0.01f*FastMath.exp(-4.0f*FastMath.cos((Main.time + originaldirection.y*0.25f)*3.0f -1.5f));
+        pulse = 0.01f*FastMath.exp(-4.5f*FastMath.cos((internaltime + originaldirection.y*0.25f)*3.0f)) 
+                + 0.01f*FastMath.exp(-4.0f*FastMath.cos((internaltime + originaldirection.y*0.25f)*3.0f -1.5f));
 
         //add some noise with a time offset to make it move
-        float noise = (float)SimplexNoise.noise(originaldirection.x + Main.time*0.2f, originaldirection.y, originaldirection.z);
+        float noise = (float)SimplexNoise.noise(originaldirection.x + internaltime*0.2f, originaldirection.y, originaldirection.z);
         direction.set(originaldirection.mult(pulse + initialradius + level + noise*2f));
         
         spatial.setLocalTranslation(direction);
@@ -91,7 +101,7 @@ public class ModuleControl extends AbstractControl{
         try{
             String geoname = ((Node)this.spatial).getChild(0).getName();
             
-            if ((Main.time % 6f) >= 5.75f)
+            if ((internaltime % 6f) >= 5.75f)
             {
                 if (Main.modulelabellist.contains(geoname)){
                     Main.modulelabellist.remove(geoname);

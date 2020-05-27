@@ -29,7 +29,7 @@ public class Module{
     private float width = 1.0f;
     private float height = 1.0f;
     
-    public Module(AssetManager asset, Node root, String name, String th, float level, float azim, float alt)
+    public Module(AssetManager asset, Node root, String name, String th, float level, float azim, float alt, boolean totexture)
     {
         //mat_core = new Material(asset, "Common/MatDefs/Misc/Particle.j3md");
         //mat_core.setTexture("Texture", asset.loadTexture("Textures/Smoke.png"));
@@ -40,11 +40,12 @@ public class Module{
         ColorRGBA localcolor = GenerateColor(th);
         mat_core.setColor("Color", localcolor);
         mat_core.setTexture("ColorMap", asset.loadTexture("Textures/Smoke.png"));
-        mat_core.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.AlphaAdditive);
+        
         mat_core.getAdditionalRenderState().setDepthTest(false);
         mat_core.getAdditionalRenderState().setDepthWrite(false);
         mat_core.setTransparent(true);
-             
+        mat_core.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.AlphaAdditive); 
+      
         Quad quadmesh = new Quad(width, height);
         Geometry quadgeo = new Geometry("quadcore", quadmesh);
         
@@ -54,7 +55,6 @@ public class Module{
         quadgeo.setUserData("touched", false);
         quadgeo.setLocalTranslation(-width/2, -height/2, 0f);
         quadgeo.setQueueBucket(RenderQueue.Bucket.Translucent);
-           
         //Vector3f normal = Vector3f.UNIT_X.clone();
         Matrix3f rot1 = new Matrix3f();
         Matrix3f rot2 = new Matrix3f();
@@ -75,9 +75,12 @@ public class Module{
         centernode.setName(name);
         centernode.setUserData("type", "node");
         centernode.setUserData("touched", false);
-        centernode.setQueueBucket(RenderQueue.Bucket.Transparent);
         
-        modulecontrol = new ModuleControl(normal, level, localcolor);
+        if (!totexture){
+            centernode.setQueueBucket(RenderQueue.Bucket.Transparent);
+        }
+        
+        modulecontrol = new ModuleControl(normal, level, localcolor, totexture);
         centernode.addControl(modulecontrol);
         
         centernode.attachChild(quadgeo);
