@@ -288,8 +288,10 @@ public class Main extends SimpleApplication implements ActionListener{
         float azimuth = FastMath.nextRandomFloat()*FastMath.TWO_PI;
         float altitude = FastMath.nextRandomFloat()*FastMath.PI;
         
+        //System.out.println("--------------------------------------------------------------------------------");
         for (int i = (data.size() - 1); i > 0; i--)
         {
+            //System.out.println(data.get(i));
             String idthread = data.get(i).split("\\|")[0];
             
             if (!idthread.equals(thread))
@@ -575,14 +577,16 @@ public class Main extends SimpleApplication implements ActionListener{
 
                     while(m.find())
                     {
-                        data.add(threadid + "|" + m.group(0).toString());
+                        if (!data.contains(threadid + "|" + m.group(0).toString()))
+                            data.add(threadid + "|" + m.group(0).toString());
                     }
 
                     m = p2.matcher(line);
 
                     while(m.find())
                     {
-                        data.add(threadid + "|" + m.group(0).toString());
+                        if (!data.contains(threadid + "|" + m.group(0).toString()))
+                            data.add(threadid + "|" + m.group(0).toString());
                     }
 
                 }

@@ -95,6 +95,8 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.swing.JFrame;
 import javax.swing.*;
 import javax.swing.JPanel;
@@ -132,7 +134,11 @@ public class RenderToSwing extends SimpleApplication implements SceneProcessor {
     
     ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(2);
     public static Future futurepidlist;
+    private Future future;
     public static JMenu itemLoadPid;
+    private int PID = -1;
+    private float checkprocesstime;
+    private float checkprocessmaxtime = 1f;
     
     private class WeirdMenu extends JMenuBar{
         @Override
@@ -184,22 +190,8 @@ public class RenderToSwing extends SimpleApplication implements SceneProcessor {
             RenderToSwing.itemLoadPid = new JMenu("Load Process PID");
             RenderToSwing.itemLoadPid.setAutoscrolls(true);
             //RenderToSwing.itemLoadPid.scrollRectToVisible(true);
-            MenuScroller.setScrollerFor(RenderToSwing.itemLoadPid, 12, 125, 0, 0);
+            MenuScroller.setScrollerFor(RenderToSwing.itemLoadPid, 24, 50, 0, 0);
             menuTortureMethods.add(RenderToSwing.itemLoadPid);
-            /*itemLoadPid.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    if (itemLoadPid.getText().equals("Remove Canvas")){
-                        //currentPanel.remove(canvas);
-
-                        itemLoadPid.setText("Add Canvas");
-                    }else if (itemLoadPid.getText().equals("Add Canvas")){
-                        //currentPanel.add(canvas, BorderLayout.CENTER);
-
-                        itemLoadPid.setText("Remove Canvas");
-                    }
-                }
-            });*/
 
             final JMenuItem itemRefresh = new JMenuItem("Refresh PID list");
             menuTortureMethods.add(itemRefresh);
@@ -576,7 +568,7 @@ public class RenderToSwing extends SimpleApplication implements SceneProcessor {
 
         //setup framebuffer's cam
         offCamera.setFrustumPerspective(45f, 1f, 1f, 1000f);
-        offCamera.setLocation(new Vector3f(0f, 0f, -25f));
+        offCamera.setLocation(new Vector3f(0f, 0f, -50f));
         offCamera.lookAt(new Vector3f(0f, 0f, 0f), Vector3f.UNIT_Y);
 
         //setup framebuffer's texture
@@ -598,9 +590,18 @@ public class RenderToSwing extends SimpleApplication implements SceneProcessor {
         offBox.setMaterial(material);
         
         newRootNode = new Node();
+        newRootNode.setName("ROOT");
         //newRootNode.attachChild(offBox);
         // attach the scene to the viewport to be rendered
         offView.attachScene(newRootNode);
+    }
+    
+    public void ClearModules()
+    {
+        linkedlines.detachAllChildren();
+        modules.detachAllChildren();
+        allmodules.clear();
+        modulehashmap.clear();
     }
     
     public void ProcessPIDList(ArrayList<String> data){
@@ -608,19 +609,31 @@ public class RenderToSwing extends SimpleApplication implements SceneProcessor {
         RenderToSwing.itemLoadPid.removeAll();
         
         for( int i = 0; i < data.size(); i++ ) {        
-            //listpid.getModel().add(data.get(i));
-            //nextItem++;
             JMenuItem item = new JMenuItem(data.get(i));
             RenderToSwing.itemLoadPid.add(item);
             item.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent ae) {
-                    RenderToSwing.weirdframe.dispose();
-                    mainapp.stop();
+                    RenderToSwing.mainapp.ClearModules();
+                    String parsedpid = ae.getActionCommand().split("\\|")[0];
+        
+                    RenderToSwing.mainapp.setPID(parsedpid);
                 }
             });
         }    
         
+    }
+    
+    public void setPID(String value)
+    {
+        try{
+           int pidvalue = Integer.parseInt(value);
+           PID = pidvalue;
+        }
+        catch(Exception n)
+        {
+            
+        }
     }
 
     @Override
@@ -634,11 +647,43 @@ public class RenderToSwing extends SimpleApplication implements SceneProcessor {
     @Override
     public void simpleUpdate(float tpf){
         RenderToSwing.time += tpf;
+        checkprocesstime += tpf;
         
         Quaternion q = new Quaternion();
         angle += tpf*0.1f;
         angle %= FastMath.TWO_PI;
         q.fromAngles(0, angle, 0);
+        
+        if (PID != -1){
+            if (checkprocesstime > checkprocessmaxtime)
+            {
+                checkprocesstime = 0f;
+
+                if (future == null)
+                {
+                    future = executor.submit(HookProcess);    //  Thread starts!
+                }
+            }
+        }
+        
+        if (future != null)
+        {
+            if(future.isDone()){
+                
+                try{
+                    ProcessModules((ArrayList<String>)future.get());
+                }
+                catch(Exception m)
+                {
+                    
+                }
+                
+                future = null;
+            }
+            else if(future.isCancelled()){
+                future = null;
+            }
+        }
 
         if (RenderToSwing.futurepidlist != null)
         {
@@ -664,7 +709,13 @@ public class RenderToSwing extends SimpleApplication implements SceneProcessor {
         //newRootNode.setLocalRotation(q);
         //linkedlines.setLocalRotation(q);
         //modules.setLocalRotation(q);
-        offCamera.setLocation(new Vector3f(FastMath.sin(angle)*25f, 0f, FastMath.cos(angle)*25f));
+        if (PID == -1){
+            offCamera.setLocation(new Vector3f(FastMath.sin(angle)*25f, 0f, FastMath.cos(angle)*25f));
+        }
+        else
+        {
+            offCamera.setLocation(new Vector3f(FastMath.sin(angle)*100f, 0f, FastMath.cos(angle)*100f));
+        }
         offCamera.lookAt(new Vector3f(0f, 0f, 0f), Vector3f.UNIT_Y);
         
         //newRootNode.setLocalRotation(q);
@@ -710,6 +761,73 @@ public class RenderToSwing extends SimpleApplication implements SceneProcessor {
     public void setProfiler(AppProfiler profiler) {
 
     }
+    
+    private Callable<ArrayList<String>> HookProcess = new Callable<ArrayList<String>>(){
+        public ArrayList<String> call() throws Exception {
+            Pattern p1;
+            Pattern p2;
+            Pattern p3;
+            String threadid = "0";
+            ArrayList<String> data = new ArrayList<String>();
+            
+            p1 = Pattern.compile("([A-Za-z0-9_-]*)!([:A-Za-z0-9_-]*\\+*)");
+            p2 = Pattern.compile("\\s([A-Za-z0-9_-]*\\+)");
+            p3 = Pattern.compile("\\s*([0-9]*\\s*)Id");
+                                  
+            // -pv no invasive
+            // -p PID
+            // -c send commands to the debugger after initialization
+            //~ display thread info * all threads
+            //k is stack with b meaning 3 parameters, and first 0x80 lines
+            
+            ProcessBuilder processBuilder = new ProcessBuilder("dbgruntime/cdb.exe","-p", "" + PID + "","-pv","-c","~*kb80;q");
+            Process process = null;
+            String line;
+
+            try {
+                process = processBuilder.start();
+            } catch (IOException ex) {
+            }
+
+            BufferedReader input = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+     
+            try{
+                line = null;
+                while((line = input.readLine())!= null){
+                    Matcher m = p3.matcher(line);
+                    
+                    while(m.find())
+                    {
+                        threadid = m.group(0).toString().replace("Id", "").replace(" ", "");
+                    }
+                    
+                    m = p1.matcher(line);
+
+                    while(m.find())
+                    {
+                        if (!data.contains(threadid + "|" + m.group(0).toString()))
+                            data.add(threadid + "|" + m.group(0).toString());
+                    }
+
+                    m = p2.matcher(line);
+
+                    while(m.find())
+                    {
+                        if (!data.contains(threadid + "|" + m.group(0).toString()))
+                            data.add(threadid + "|" + m.group(0).toString());
+                    }
+
+                }
+            }
+            catch(Exception n)
+            {
+
+            }
+
+            return data;
+        }
+    };
     
     private Callable<ArrayList<String>> HookProcessList = new Callable<ArrayList<String>>(){
         public ArrayList<String> call() throws Exception {
