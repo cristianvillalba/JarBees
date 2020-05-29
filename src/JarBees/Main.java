@@ -65,11 +65,14 @@ public class Main extends SimpleApplication implements ActionListener{
     ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(2);
     private Future future;
     private Future futurepidlist;
+    private Future futurecpu;
     private Node linkedlines;
     private Node modules;
     private ColorRGBA linecolor;
     
     private int PID;
+    private String PROCESSNAME;
+    public static float CPUUTIL;
     
     public static float time = 0f;
     public static Main instance;
@@ -179,6 +182,34 @@ public class Main extends SimpleApplication implements ActionListener{
         this.PIDlist(data);
     }
     
+    public void ProcessCPU(ArrayList<String> data)
+    {
+        for (int i = 0; i< data.size(); i++)
+        {
+            if (data.get(i).length()<28){
+                continue;
+            }
+            
+            String processname = data.get(i).substring(0, 28).trim();
+            String cpu = data.get(i).substring(28).trim();
+            
+            if (processname.toLowerCase().equals(this.PROCESSNAME.toLowerCase()))
+            {
+                try
+                {
+                    Main.CPUUTIL = Float.parseFloat(cpu);
+                    //System.out.println(Main.CPUUTIL);
+                }
+                catch(Exception n)
+                {
+                    
+                }
+                
+            }
+        }
+        
+    }
+    
     public void PIDlist(ArrayList<String> data){
         // Create a simple container for our elements
         if (pidlistwin != null)
@@ -226,8 +257,10 @@ public class Main extends SimpleApplication implements ActionListener{
         System.out.println("Selected:" + selectedvalue);
         
         String parsedpid = selectedvalue.split("\\|")[0];
+        String parsedname = selectedvalue.split("\\|")[1];
         
         this.setPID(parsedpid);
+        this.setProcessName(parsedname);
     }
     
     public void ClearModules()
@@ -236,6 +269,17 @@ public class Main extends SimpleApplication implements ActionListener{
         modules.detachAllChildren();
         allmodules.clear();
         modulehashmap.clear();
+    }
+    
+    public void setProcessName(String n)
+    {
+        if (n.contains("."))
+        {
+           this.PROCESSNAME = n.split("\\.")[0];
+        }
+        else{
+        this.PROCESSNAME = n;
+        }
     }
     
     public void setPID(String value)
@@ -426,6 +470,11 @@ public class Main extends SimpleApplication implements ActionListener{
                 {
                     future = executor.submit(HookProcess);    //  Thread starts!
                 }
+                
+                if (futurecpu == null)
+                {
+                    futurecpu = executor.submit(HookCPU);    //  Thread starts!
+                }
             }
         }
         
@@ -464,6 +513,25 @@ public class Main extends SimpleApplication implements ActionListener{
             }
             else if(futurepidlist.isCancelled()){
                 futurepidlist = null;
+            }
+        }
+        
+        if (futurecpu != null)
+        {
+            if(futurecpu.isDone()){
+                
+                try{
+                    ProcessCPU((ArrayList<String>)futurecpu.get());
+                }
+                catch(Exception m)
+                {
+                    
+                }
+                
+                futurecpu = null;
+            }
+            else if(futurecpu.isCancelled()){
+                futurecpu = null;
             }
         }
             
@@ -589,6 +657,37 @@ public class Main extends SimpleApplication implements ActionListener{
                             data.add(threadid + "|" + m.group(0).toString());
                     }
 
+                }
+            }
+            catch(Exception n)
+            {
+
+            }
+
+            return data;
+        }
+    };
+    
+    private Callable<ArrayList<String>> HookCPU = new Callable<ArrayList<String>>(){
+        public ArrayList<String> call() throws Exception {
+            ArrayList<String> data = new ArrayList<String>();
+            
+            ProcessBuilder processBuilder = new ProcessBuilder("wmic.exe","path", "Win32_PerfFormattedData_PerfProc_Process","get","Name,PercentProcessorTime");
+            Process process = null;
+            String line;
+
+            try {
+                process = processBuilder.start();
+            } catch (IOException ex) {
+            }
+
+            BufferedReader input = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+     
+            try{
+                line = null;
+                while((line = input.readLine())!= null){
+                    data.add(line);
                 }
             }
             catch(Exception n)

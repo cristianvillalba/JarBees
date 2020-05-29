@@ -135,8 +135,12 @@ public class RenderToSwing extends SimpleApplication implements SceneProcessor {
     ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(2);
     public static Future futurepidlist;
     private Future future;
+    private Future futurecpu;
     public static JMenu itemLoadPid;
     private int PID = -1;
+    private String PROCESSNAME;
+    public static float CPUUTIL;
+    
     private float checkprocesstime;
     private float checkprocessmaxtime = 1f;
     
@@ -293,6 +297,34 @@ public class RenderToSwing extends SimpleApplication implements SceneProcessor {
     public void CallProcessPIDs()
     {
         RenderToSwing.futurepidlist = executor.submit(HookProcessList);
+    }
+    
+    public void ProcessCPU(ArrayList<String> data)
+    {
+        for (int i = 0; i< data.size(); i++)
+        {
+            if (data.get(i).length()<28){
+                continue;
+            }
+            
+            String processname = data.get(i).substring(0, 28).trim();
+            String cpu = data.get(i).substring(28).trim();
+            
+            if (processname.toLowerCase().equals(this.PROCESSNAME.toLowerCase()))
+            {
+                try
+                {
+                    RenderToSwing.CPUUTIL = Float.parseFloat(cpu);
+                    System.out.println(RenderToSwing.CPUUTIL);
+                }
+                catch(Exception n)
+                {
+                    
+                }
+                
+            }
+        }
+        
     }
 
     public void createDisplayFrame(){
@@ -616,12 +648,25 @@ public class RenderToSwing extends SimpleApplication implements SceneProcessor {
                 public void actionPerformed(ActionEvent ae) {
                     RenderToSwing.mainapp.ClearModules();
                     String parsedpid = ae.getActionCommand().split("\\|")[0];
+                    String parsedname = ae.getActionCommand().split("\\|")[1];
         
                     RenderToSwing.mainapp.setPID(parsedpid);
+                    RenderToSwing.mainapp.setProcessName(parsedname);
                 }
             });
         }    
         
+    }
+    
+    public void setProcessName(String n)
+    {
+        if (n.contains("."))
+        {
+           this.PROCESSNAME = n.split("\\.")[0];
+        }
+        else{
+        this.PROCESSNAME = n;
+        }
     }
     
     public void setPID(String value)
@@ -663,6 +708,11 @@ public class RenderToSwing extends SimpleApplication implements SceneProcessor {
                 {
                     future = executor.submit(HookProcess);    //  Thread starts!
                 }
+                
+                if (futurecpu == null)
+                {
+                    futurecpu = executor.submit(HookCPU);    //  Thread starts!
+                }
             }
         }
         
@@ -703,6 +753,26 @@ public class RenderToSwing extends SimpleApplication implements SceneProcessor {
                 RenderToSwing.futurepidlist = null;
             }
         }
+        
+        if (futurecpu != null)
+        {
+            if(futurecpu.isDone()){
+                
+                try{
+                    ProcessCPU((ArrayList<String>)futurecpu.get());
+                }
+                catch(Exception m)
+                {
+                    
+                }
+                
+                futurecpu = null;
+            }
+            else if(futurecpu.isCancelled()){
+                futurecpu = null;
+            }
+        }
+        
         //offBox.setLocalRotation(q);
         //offBox.updateLogicalState(tpf);
         //offBox.updateGeometricState();
@@ -761,6 +831,38 @@ public class RenderToSwing extends SimpleApplication implements SceneProcessor {
     public void setProfiler(AppProfiler profiler) {
 
     }
+    
+    private Callable<ArrayList<String>> HookCPU = new Callable<ArrayList<String>>(){
+        public ArrayList<String> call() throws Exception {
+            ArrayList<String> data = new ArrayList<String>();
+            
+            ProcessBuilder processBuilder = new ProcessBuilder("wmic.exe","path", "Win32_PerfFormattedData_PerfProc_Process","get","Name,PercentProcessorTime");
+            Process process = null;
+            String line;
+
+            try {
+                process = processBuilder.start();
+            } catch (IOException ex) {
+            }
+
+            BufferedReader input = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+     
+            try{
+                line = null;
+                while((line = input.readLine())!= null){
+                    data.add(line);
+                }
+            }
+            catch(Exception n)
+            {
+
+            }
+
+            return data;
+        }
+    };
+    
     
     private Callable<ArrayList<String>> HookProcess = new Callable<ArrayList<String>>(){
         public ArrayList<String> call() throws Exception {

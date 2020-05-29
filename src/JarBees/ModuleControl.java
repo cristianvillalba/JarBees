@@ -75,10 +75,23 @@ public class ModuleControl extends AbstractControl{
         if (!totexture)
         {
             internaltime = Main.time;
+            
+            if (Main.CPUUTIL != 0)
+            {
+                internaltime = internaltime*(Main.CPUUTIL/100*0.5f);//take CPU into considerantion too
+                //more CPU more movement in the modules
+            }
+            
         }
         else
         {
             internaltime = RenderToSwing.time;
+            
+            if (RenderToSwing.CPUUTIL != 0)
+            {
+                internaltime = internaltime*(RenderToSwing.CPUUTIL/100*0.5f);//take CPU into considerantion too
+                //more CPU more movement in the modules
+            }
         }
         //Heart beat that I did with try/error
         //goes from 4 to 0 with 2 pikes
